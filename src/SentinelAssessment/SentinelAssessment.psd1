@@ -7,7 +7,7 @@
   PowerShellVersion = '7.0'
   FunctionsToExport = @(
     'Invoke-SACollect',
-    'Invoke-SANormalize',
+    'Invoke-SANormalise',
     'Invoke-SARender',
     'Invoke-SARun'
   )
