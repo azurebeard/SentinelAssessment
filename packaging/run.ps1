@@ -4,7 +4,7 @@ param(
   [Parameter(Mandatory=$true)][string]$ResourceGroupName,
   [Parameter(Mandatory=$true)][string]$WorkspaceName,
 
-  [ValidateSet("All","Collect","NormaliSe","Render")]
+  [ValidateSet("All","Collect","Normalise","Render")]
   [string]$Steps = "All",
 
   [int]$DaysIngestionLookback = 30,
