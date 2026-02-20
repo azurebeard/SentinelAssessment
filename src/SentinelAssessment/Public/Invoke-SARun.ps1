@@ -19,7 +19,7 @@ function Invoke-SARun {
   }
 
   if ($Steps -in @("All","Normalise")) {
-    Invoke-SANormalize -OutDir $OutDir
+    Invoke-SANormalise -OutDir $OutDir
   }
 
   if ($Steps -in @("All","Render")) {
