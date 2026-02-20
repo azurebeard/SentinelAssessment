@@ -1,21 +1,16 @@
 [CmdletBinding()]
 param(
-  [ValidateSet("Release","Branch")]
-  [string]$Mode = "Release",
-
+  # Repo
   [string]$Org = "azurebeard",
   [string]$Repo = "SentinelAssessment",
   [string]$Branch = "main",
-
-  # If Mode=Release and Version not specified -> latest
-  [string]$Version = "latest",
 
   # Run parameters
   [Parameter(Mandatory=$false)][string]$SubscriptionId,
   [Parameter(Mandatory=$false)][string]$ResourceGroupName,
   [Parameter(Mandatory=$false)][string]$WorkspaceName,
 
-  [ValidateSet("All","Collect","Normalize","Render")]
+  [ValidateSet("All","Collect","Normalise","Render")]
   [string]$Steps = "All",
 
   [int]$DaysIngestionLookback = 30,
@@ -27,13 +22,6 @@ $ErrorActionPreference = "Stop"
 
 function Write-Info($m){ Write-Host "[INFO] $m" -ForegroundColor Cyan }
 function Write-Warn($m){ Write-Host "[WARN] $m" -ForegroundColor Yellow }
-
-$WorkDir = Join-Path $HOME "sentinel-assessment"
-New-Item -ItemType Directory -Path $WorkDir -Force | Out-Null
-Set-Location $WorkDir
-
-Write-Info "WorkDir: $WorkDir"
-Write-Info "Mode: $Mode"
 
 function Download-File([string]$Url, [string]$OutFile){
   Write-Info "Downloading: $Url"
@@ -51,44 +39,52 @@ function Expand-Zip([string]$Zip, [string]$Dest){
   Expand-Archive -Path $Zip -DestinationPath $Dest -Force
 }
 
-$BundleDir = Join-Path $WorkDir "bundle"
+# Persistent Cloud Shell home
+$WorkDir = Join-Path $HOME "sentinel-assessment"
+New-Item -ItemType Directory -Path $WorkDir -Force | Out-Null
+Set-Location $WorkDir
 
-if ($Mode -eq "Branch") {
-  # Pull a prebuilt bundle file from the branch (you’ll commit one), OR download module+templates raw.
-  # Easiest: commit a branch bundle at /packaging/SentinelAssessment.bundle.zip
-  $BundleZip = Join-Path $WorkDir "SentinelAssessment.bundle.zip"
-  $bundleUrl = "https://raw.githubusercontent.com/$Org/$Repo/$Branch/packaging/SentinelAssessment.bundle.zip"
-  Download-File $bundleUrl $BundleZip
-  Expand-Zip $BundleZip $BundleDir
+Write-Info "WorkDir: $WorkDir"
+Write-Info "Repo: $Org/$Repo (branch: $Branch)"
+
+# Download repo branch ZIP
+$RepoZip = Join-Path $WorkDir "$Repo-$Branch.zip"
+$ArchiveUrl = "https://github.com/$Org/$Repo/archive/refs/heads/$Branch.zip"
+Download-File $ArchiveUrl $RepoZip
+
+# Extract
+$ExtractDir = Join-Path $WorkDir "repo"
+Expand-Zip $RepoZip $ExtractDir
+
+# GitHub ZIP root folder is typically Repo-Branch
+$RepoRoot = Join-Path $ExtractDir "$Repo-$Branch"
+if (-not (Test-Path $RepoRoot)) {
+  # fallback: take first directory
+  $RepoRoot = (Get-ChildItem -Path $ExtractDir -Directory | Select-Object -First 1).FullName
 }
-else {
-  # Release mode: fetch latest (or specific tag) release asset.
-  # NOTE: We avoid complex GitHub API parsing here by letting you keep a stable "latest bundle" URL.
-  # Best practice: attach SentinelAssessment.bundle.zip to every GitHub Release.
-  # For latest, you can use the GitHub "latest download" endpoint.
-  $BundleZip = Join-Path $WorkDir "SentinelAssessment.bundle.zip"
-  if ($Version -eq "latest") {
-    $bundleUrl = "https://github.com/$Org/$Repo/releases/latest/download/SentinelAssessment.bundle.zip"
-  } else {
-    $bundleUrl = "https://github.com/$Org/$Repo/releases/download/$Version/SentinelAssessment.bundle.zip"
-  }
-  Download-File $bundleUrl $BundleZip
-  Expand-Zip $BundleZip $BundleDir
+Write-Info "RepoRoot: $RepoRoot"
+
+# Expect packaging/run.ps1 to exist in repo
+$Runner = Join-Path $RepoRoot "packaging/run.ps1"
+if (-not (Test-Path $Runner)) {
+  throw "Runner not found: $Runner. Ensure packaging/run.ps1 exists in the repo."
 }
 
-# Bundle contains:
-#  - src/SentinelAssessment module folder
-#  - templates
-#  - run.ps1 (small runner wrapper)
-$Runner = Join-Path $BundleDir "run.ps1"
-if (-not (Test-Path $Runner)) { throw "Bundle missing run.ps1 at $Runner" }
-
-# If user didn’t pass runtime params, prompt minimally (Cloud Shell friendly)
+# Prompt only if missing (Cloud Shell friendly)
 if (-not $SubscriptionId)    { $SubscriptionId    = Read-Host "SubscriptionId" }
 if (-not $ResourceGroupName) { $ResourceGroupName = Read-Host "ResourceGroupName" }
 if (-not $WorkspaceName)     { $WorkspaceName     = Read-Host "WorkspaceName" }
 
-Write-Info "Launching runner..."
+# Prepare output dir for this run
+$RunId  = (Get-Date -Format "yyyyMMdd-HHmmss")
+$OutDir = Join-Path $WorkDir ("out/{0}" -f $RunId)
+New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
+
+Write-Info "RunId: $RunId"
+Write-Info "OutDir: $OutDir"
+Write-Info "Steps: $Steps"
+
+# Execute runner from extracted repo
 & $Runner `
   -SubscriptionId $SubscriptionId `
   -ResourceGroupName $ResourceGroupName `
@@ -97,4 +93,8 @@ Write-Info "Launching runner..."
   -DaysIngestionLookback $DaysIngestionLookback `
   -DaysHealthLookback $DaysHealthLookback `
   -WorkDir $WorkDir `
-  -BundleDir $BundleDir
+  -RepoRoot $RepoRoot `
+  -OutDir $OutDir
+
+Write-Info "Done."
+Write-Info "HTML: $(Join-Path $OutDir 'Sentinel-Assessment-v2.html')"
