@@ -45,7 +45,7 @@ Usage
 | sort by TotalMB desc
 | take 12
 "@
-  $ing = Try-RunLaQuery -WorkspaceCustomerId ([Guid]$ws.CustomerId) -Query $q -Timespan ("P{0}D" -f $DaysIngestionLookback)
+  $ing = Try-RunLaQuery -WorkspaceCustomerId ([Guid]$ws.CustomerId) -Query $q -Days $DaysIngestionLookback
   Save-Json $ing (Join-Path $OutDir "raw.ingestion.query.json")
 
   # NOTE: keep going with your existing raw calls...
