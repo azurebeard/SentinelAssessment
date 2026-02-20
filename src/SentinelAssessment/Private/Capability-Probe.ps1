@@ -15,13 +15,13 @@ function Capability-Probe {
   }
 
   # KQL probes (cheap)
-  $u = Try-RunLaQuery -WorkspaceCustomerId $WorkspaceCustomerId -Query "Usage | take 1" -Timespan "P7D"
+  $u = Try-RunLaQuery -WorkspaceCustomerId $WorkspaceCustomerId -Query "Usage | take 1" -Days 7
   $caps.kql.canQueryUsage = [bool]$u.Success
 
-  $h = Try-RunLaQuery -WorkspaceCustomerId $WorkspaceCustomerId -Query "SentinelHealth | take 1" -Timespan "P30D"
+  $h = Try-RunLaQuery -WorkspaceCustomerId $WorkspaceCustomerId -Query "SentinelHealth | take 1" -Days 30
   $caps.kql.canQuerySentinelHealth = [bool]$h.Success
 
-  $a = Try-RunLaQuery -WorkspaceCustomerId $WorkspaceCustomerId -Query "SentinelAudit | take 1" -Timespan "P30D"
+  $a = Try-RunLaQuery -WorkspaceCustomerId $WorkspaceCustomerId -Query "SentinelAudit | take 1" -Days 30
   $caps.kql.canQuerySentinelAudit = [bool]$a.Success
 
   # ARM probes (safe GET lists)
