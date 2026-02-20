@@ -44,5 +44,5 @@ function Invoke-SANormalise {
   # TODO: normalize the rest (connectors, rules, automation, workbooks, playbooks, health)
   # Key principle: every collection becomes { status, error, rows[] }, and rows is ALWAYS an array.
 
-  Save-Json $norm (Join-Path $OutDir "normalized.json")
+  Save-Json $norm (Join-Path $OutDir "normalised.json")
 }
