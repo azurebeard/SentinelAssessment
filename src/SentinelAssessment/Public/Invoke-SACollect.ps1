@@ -56,4 +56,5 @@ $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)  # .../src/Sen
 $kqlCorePack = Join-Path $repoRoot "../../kql/packs/core"
 $kqlCorePack = (Resolve-Path $kqlCorePack).Path
 
-Invoke-KqlPack -WorkspaceCustomerId ([Guid]$ws.CustomerId) -PackPath $kqlCorePack -OutDir $OutDir
+# Dynamic KQL Packs (Option A)
+Invoke-KqlPacks -WorkspaceCustomerId ([Guid]$ws.CustomerId) -RepoRoot $RepoRoot -OutDir $OutDir -DefaultsOnly -ProbeTables -ProbeDays 1
