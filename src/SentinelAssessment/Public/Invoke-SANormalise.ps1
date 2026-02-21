@@ -1,4 +1,4 @@
-function Invoke-SANormalize {
+function Invoke-SANormalise {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory=$true)][string]$OutDir,
