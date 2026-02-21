@@ -206,5 +206,5 @@ function Invoke-SANormalise {
     }
   }
 
-  Save-Json $norm (Join-Path $OutDir "normalized.json")
+  Save-Json $norm (Join-Path $OutDir "normalised.json")
 }
