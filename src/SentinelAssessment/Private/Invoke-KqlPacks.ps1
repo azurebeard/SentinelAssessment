@@ -28,11 +28,18 @@ function Invoke-KqlPacks {
     if ($ExcludePacks -and ($ExcludePacks -contains $packId)) { continue }
     if ($DefaultsOnly -and (-not [bool]$manifest.default)) { continue }
 
-    Invoke-KqlPack `
-      -WorkspaceCustomerId $WorkspaceCustomerId `
-      -PackPath $packPath `
-      -OutDir $OutDir `
-      -ProbeTables:$ProbeTables `
-      -ProbeDays $ProbeDays
+try {
+  Invoke-KqlPack `
+    -WorkspaceCustomerId $WorkspaceCustomerId `
+    -PackPath $packPath `
+    -OutDir $OutDir `
+    -ProbeTables:$ProbeTables `
+    -ProbeDays $ProbeDays
+}
+catch {
+  Write-Host "[ERROR] KQL pack failed: $packId" -ForegroundColor Red
+  Write-Host $_.InvocationInfo.PositionMessage -ForegroundColor Red
+  throw
+}
   }
 }
