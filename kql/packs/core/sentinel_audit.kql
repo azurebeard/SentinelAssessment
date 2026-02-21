@@ -1,1 +1,5 @@
-
+SentinelAudit
+| where TimeGenerated > ago(30d)
+| summarize Events=count(), LastEvent=max(TimeGenerated) by OperationName
+| sort by Events desc
+| take 25
