@@ -1,15 +1,193 @@
-body { font-family: Segoe UI, Arial, sans-serif; margin: 24px; color: #111; line-height: 1.35; }
+/* Base */
+body {
+  font-family: Segoe UI, Arial, sans-serif;
+  margin: 24px;
+  color: #111;
+  line-height: 1.35;
+}
+
 h1 { margin: 0 0 6px 0; font-size: 22px; }
 h2 { margin-top: 22px; font-size: 18px; }
-.muted { color:#555; }
-.card { border:1px solid #ddd; border-radius:10px; padding:12px 14px; background:#fff; }
-.warn { border:1px solid #ffe1a6; background:#fff7e6; padding:10px; border-radius:10px; }
-table { border-collapse: collapse; width: 100%; margin-top: 8px;}
-th, td { border: 1px solid #e3e3e3; padding: 8px; vertical-align: top; }
-th { background: #f6f6f6; text-align: left; }
-.barRow { display:flex; align-items:center; gap:10px; margin: 6px 0; }
-.barLabel { width: 260px; font-size: 12px; overflow:hidden; text-overflow: ellipsis; white-space: nowrap; }
-.barTrack { flex: 1; background:#f0f0f0; border-radius: 8px; height: 12px; overflow:hidden; }
-.barFill { height: 12px; background:#444; }
-.barValue { width: 90px; text-align:right; font-variant-numeric: tabular-nums; font-size: 12px; }
-code { background:#f6f6f6; padding: 1px 4px; border-radius: 6px; }
+h3 { margin-top: 16px; font-size: 15px; }
+
+.muted, .small {
+  color: #555;
+  font-size: 12px;
+}
+
+/* Layout helpers (new) */
+.wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+@media (max-width: 860px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+/* Cards */
+.card {
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #fff;
+}
+
+.warn {
+  border: 1px solid #ffe1a6;
+  background: #fff7e6;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+/* Tables */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 8px;
+}
+
+th, td {
+  border: 1px solid #e3e3e3;
+  padding: 8px;
+  vertical-align: top;
+}
+
+th {
+  background: #f6f6f6;
+  text-align: left;
+}
+
+/* Badges (new) */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 18px;
+  border: 1px solid #ddd;
+  background: #f4f4f4;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.badge.ok {
+  background: #eefaf0;
+  border-color: #b7e3c0;
+}
+
+.badge.warn {
+  background: #fff7e6;
+  border-color: #ffd38a;
+}
+
+.badge.err {
+  background: #ffecec;
+  border-color: #ffb3b3;
+}
+
+.badge.neutral {
+  background: #f4f4f4;
+  border-color: #ddd;
+}
+
+/* Details / drilldowns (new) */
+details {
+  border: 1px solid #e3e3e3;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-top: 10px;
+  background: #fff;
+}
+
+details > summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Inline code + blocks */
+code {
+  background: #f6f6f6;
+  padding: 1px 4px;
+  border-radius: 6px;
+}
+
+pre {
+  background: #f6f6f6;
+  border: 1px solid #e3e3e3;
+  border-radius: 10px;
+  padding: 10px;
+  overflow: auto;
+  max-height: 280px;
+  white-space: pre-wrap;
+}
+
+/* Ingestion bars (existing classes retained) */
+.barRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0;
+}
+
+.barLabel {
+  width: 260px;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barTrack {
+  flex: 1;
+  background: #f0f0f0;
+  border-radius: 8px;
+  height: 12px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 12px;
+  background: #444;
+}
+
+.barValue {
+  width: 90px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+
+/* Optional alias classes (in case your renderer uses barwrap/barrow/bar etc.) */
+.barwrap { margin-top: 8px; }
+.barrow { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+.bar { flex: 1; background: #f0f0f0; border-radius: 8px; height: 12px; overflow: hidden; }
+.bar > span { display: block; height: 12px; background: #444; }
+
+/* KQL-specific niceties (new, subtle) */
+.kqlCardTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #e3e3e3;
+  background: #f6f6f6;
+  font-size: 12px;
+}
