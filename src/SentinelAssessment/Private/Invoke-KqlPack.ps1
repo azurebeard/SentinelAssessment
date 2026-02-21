@@ -16,11 +16,15 @@ function Invoke-KqlPack {
   function Write-Info($m){ Write-Host "[INFO] $m" -ForegroundColor Cyan }
 
   # ---- local helpers ----
-  function Safe-Count($x) {
-  if ($null -eq $x) { return 0 }
-  return @($x).Count
+  function Safe-Array($x) {
+  if ($null -eq $x) { return @() }
+  return @($x)
   }
 
+  function Safe-Count($x) {
+  return (Safe-Array $x).Count
+  }
+  
   function Get-AvailableTablesLocal {
     param([Guid]$WorkspaceCustomerId, [int]$Days)
 
@@ -48,7 +52,7 @@ search *
   function Missing-Tables {
     param([string[]]$Deps, [string[]]$Available)
     $missing = @()
-    foreach ($d in (As-Array $Deps)) {
+    foreach ($d in (Safe-Array $Deps)) {
       if ($Available -and ($Available -notcontains $d)) { $missing += $d }
     }
     $missing
@@ -77,7 +81,7 @@ search *
     Save-Json $tablesProbe (Join-Path $packOutDir "_tablesProbe.json")
 
     if ($tablesProbe.Success) {
-      $availableTables = As-Array $tablesProbe.Tables
+      $availableTables = Safe-Array $tablesProbe.Tables
       Write-Info ("Tables found: {0}" -f (Safe-Count $availableTables))
     } else {
       Write-Info ("Table probe failed: {0}" -f $tablesProbe.Error)
@@ -88,13 +92,13 @@ search *
   $resultsIndex = @()
   $ran = 0
 
-  foreach ($q in (As-Array $manifest.queries)) {
+  foreach ($q in (Safe-Array $manifest.queries)) {
     if ($ran -ge $MaxQueries) { break }
 
     $qid = [string]$q.id
     $kqlFile = Join-Path $PackPath ([string]$q.kqlFile)
     $days = if ($LookbackDaysOverride) { $LookbackDaysOverride } else { [int]$q.lookbackDaysDefault }
-    $deps = As-Array $q.tableDependencies
+    $deps = Safe-Array $q.tableDependencies
 
     if (-not (Test-Path $kqlFile)) {
       $out = [ordered]@{
@@ -119,7 +123,7 @@ search *
     # If we probed tables and dependencies exist, skip cleanly when missing
     if ($ProbeTables -and $tablesProbe -and $tablesProbe.Success -and $deps.Count -gt 0) {
       $missing = Missing-Tables -Deps $deps -Available $availableTables
-      if ($missing.Count -gt 0) {
+      if (Safe-Count $missing -gt 0) {
         $out = [ordered]@{
           packId  = $packId
           id      = $qid
