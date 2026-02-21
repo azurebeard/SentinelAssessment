@@ -16,6 +16,11 @@ function Invoke-KqlPack {
   function Write-Info($m){ Write-Host "[INFO] $m" -ForegroundColor Cyan }
 
   # ---- local helpers ----
+  function Safe-Count($x) {
+  if ($null -eq $x) { return 0 }
+  return @($x).Count
+  }
+
   function Get-AvailableTablesLocal {
     param([Guid]$WorkspaceCustomerId, [int]$Days)
 
@@ -73,7 +78,7 @@ search *
 
     if ($tablesProbe.Success) {
       $availableTables = As-Array $tablesProbe.Tables
-      Write-Info ("Tables found: {0}" -f $availableTables.Count)
+      Write-Info ("Tables found: {0}" -f (Safe-Count $availableTables))
     } else {
       Write-Info ("Table probe failed: {0}" -f $tablesProbe.Error)
     }
