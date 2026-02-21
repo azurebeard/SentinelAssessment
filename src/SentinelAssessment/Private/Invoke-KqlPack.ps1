@@ -123,7 +123,7 @@ search *
     # If we probed tables and dependencies exist, skip cleanly when missing
     if ($ProbeTables -and $tablesProbe -and $tablesProbe.Success -and (Safe-Count $deps) -gt 0) {
       $missing = Missing-Tables -Deps $deps -Available $availableTables
-      if (Safe-Count $missing -gt 0) {
+      if ((Safe-Count $missing) -gt 0) {
         $out = [ordered]@{
           packId  = $packId
           id      = $qid
