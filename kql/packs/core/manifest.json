@@ -1,1 +1,23 @@
-
+{
+  "packId": "core",
+  "title": "Core Sentinel Assessment",
+  "default": true,
+  "queries": [
+    {
+      "id": "ingestion_top_datatypes",
+      "title": "Ingestion profile (top datatypes)",
+      "kqlFile": "ingestion.kql",
+      "lookbackDaysDefault": 30,
+      "tableDependencies": ["Usage"],
+      "purpose": "Sizing + source mix"
+    },
+    {
+      "id": "incidents_summary",
+      "title": "Incidents summary",
+      "kqlFile": "incidents_summary.kql",
+      "lookbackDaysDefault": 30,
+      "tableDependencies": ["SecurityIncident"],
+      "purpose": "SOC workload + maturity"
+    }
+  ]
+}
