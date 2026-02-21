@@ -2,10 +2,10 @@ function Invoke-KqlPack {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory=$true)][Guid]$WorkspaceCustomerId,
-    [Parameter(Mandatory=$true)][string]$PackPath,     # folder containing manifest.json + .kql files
+    [Parameter(Mandatory=$true)][string]$PackPath,
     [Parameter(Mandatory=$true)][string]$OutDir,
     [int]$LookbackDaysOverride,
-    [switch]$ProbeTables,                              # if set, will probe available tables once
+    [switch]$ProbeTables,
     [int]$ProbeDays = 1,
     [int]$MaxQueries = 999
   )
@@ -15,19 +15,13 @@ function Invoke-KqlPack {
 
   function Write-Info($m){ Write-Host "[INFO] $m" -ForegroundColor Cyan }
 
-  # ---- local helpers ----
-  function Safe-Array($x) {
-  if ($null -eq $x) { return @() }
-  return @($x)
-  }
+  function Safe-Array($x) { if ($null -eq $x) { @() } else { @($x) } }
+  function Safe-Count($x) { (Safe-Array $x).Count }
 
-  function Safe-Count($x) {
-  return (Safe-Array $x).Count
-  }
-  
   function Get-AvailableTablesLocal {
     param([Guid]$WorkspaceCustomerId, [int]$Days)
 
+    # NOTE: escape `$table` for PowerShell, so KQL receives literal $table
     $q = @"
 search *
 | where TimeGenerated > ago(${Days}d)
@@ -41,7 +35,7 @@ search *
     }
 
     $tables = @()
-    foreach ($row in (As-Array $res.Results)) {
+    foreach ($row in (Safe-Array $res.Results)) {
       if ($row.PSObject.Properties.Name -contains '$table') { $tables += [string]$row.'$table' }
       elseif ($row.PSObject.Properties.Name -contains 'table') { $tables += [string]$row.table }
     }
@@ -50,15 +44,20 @@ search *
   }
 
   function Missing-Tables {
-    param([string[]]$Deps, [string[]]$Available)
+    param([object]$Deps, [object]$Available)
+
+    $depsArr = Safe-Array $Deps
+    $availArr = Safe-Array $Available
+
     $missing = @()
-    foreach ($d in (Safe-Array $Deps)) {
-      if ($Available -and ($Available -notcontains $d)) { $missing += $d }
+    foreach ($d in $depsArr) {
+      if ($null -eq $d) { continue }
+      if ($availArr -notcontains [string]$d) { $missing += [string]$d }
     }
     $missing
   }
 
-  # ---- manifest + output dirs ----
+  # ---- manifest ----
   $manifestPath = Join-Path $PackPath "manifest.json"
   if (-not (Test-Path $manifestPath)) { throw "Missing manifest.json at $manifestPath" }
 
@@ -113,16 +112,14 @@ search *
         rows    = @()
         collectedUtc = (Get-Date).ToUniversalTime().ToString("o")
       }
-      $outFile = Join-Path $packOutDir ("{0}.json" -f $qid)
-      Save-Json $out $outFile
+      Save-Json $out (Join-Path $packOutDir ("{0}.json" -f $qid))
 
       $resultsIndex += [ordered]@{ id=$qid; title=[string]$q.title; status="Skipped"; reason=$out.error; file=("raw.kqlpack.{0}/{1}.json" -f $packId, $qid) }
       continue
     }
 
-    # If we probed tables and dependencies exist, skip cleanly when missing
     if ($ProbeTables -and $tablesProbe -and $tablesProbe.Success -and (Safe-Count $deps) -gt 0) {
-      $missing = Missing-Tables -Deps $deps -Available $availableTables
+      $missing = Safe-Array (Missing-Tables -Deps $deps -Available $availableTables)
       if ((Safe-Count $missing) -gt 0) {
         $out = [ordered]@{
           packId  = $packId
@@ -136,8 +133,7 @@ search *
           rows    = @()
           collectedUtc = (Get-Date).ToUniversalTime().ToString("o")
         }
-        $outFile = Join-Path $packOutDir ("{0}.json" -f $qid)
-        Save-Json $out $outFile
+        Save-Json $out (Join-Path $packOutDir ("{0}.json" -f $qid))
 
         $resultsIndex += [ordered]@{ id=$qid; title=[string]$q.title; status="Skipped"; reason=$out.error; file=("raw.kqlpack.{0}/{1}.json" -f $packId, $qid) }
         continue
@@ -158,12 +154,11 @@ search *
       success = $res.Success
       skipped = $false
       error   = $res.Error
-      rows    = As-Array $res.Results
+      rows    = Safe-Array $res.Results
       collectedUtc = (Get-Date).ToUniversalTime().ToString("o")
     }
 
-    $outFile = Join-Path $packOutDir ("{0}.json" -f $qid)
-    Save-Json $out $outFile
+    Save-Json $out (Join-Path $packOutDir ("{0}.json" -f $qid))
 
     $resultsIndex += [ordered]@{
       id=$qid
