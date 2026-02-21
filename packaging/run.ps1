@@ -18,6 +18,13 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
+  throw "RepoRoot is empty. The bootstrapper must pass the extracted repo root to packaging/run.ps1."
+}
+if (-not (Test-Path $RepoRoot)) {
+  throw "RepoRoot does not exist: $RepoRoot"
+}
+
 function Write-Info($m){ Write-Host "[INFO] $m" -ForegroundColor Cyan }
 
 # Import module from repo
@@ -37,6 +44,7 @@ Invoke-SARun `
   -Steps $Steps `
   -OutDir $OutDir `
   -TemplatesDir $templatesDir `
+  -RepoRoot $RepoRoot `
   -DaysIngestionLookback $DaysIngestionLookback `
   -DaysHealthLookback $DaysHealthLookback
 
