@@ -205,6 +205,90 @@ function Invoke-SANormalise {
       }
     }
   }
+  # --- KQL packs: merge raw.kqlpack.* outputs into normalised.json (Option A) ---
+$norm.kqlPacks = [ordered]@{}
+
+function Safe-Array($x) {
+  if ($null -eq $x) { return @() }
+  return @($x)
+}
+
+# Discover pack output folders created by Invoke-KqlPack
+$packDirs = Get-ChildItem -Path $OutDir -Directory -Filter "raw.kqlpack.*" -ErrorAction SilentlyContinue
+
+foreach ($pd in $packDirs) {
+  $packId = $pd.Name -replace '^raw\.kqlpack\.', ''
+  $packOutRel = $pd.Name # e.g. raw.kqlpack.core
+
+  $indexPath = Join-Path $pd.FullName "_index.json"
+  if (-not (Test-Path $indexPath)) { continue }
+
+  $index = Load-Json $indexPath
+  $queries = @()
+  $packStatus = "OK"
+
+  foreach ($item in (Safe-Array $index)) {
+    $rawRel = [string]$item.file
+    if ([string]::IsNullOrWhiteSpace($rawRel)) {
+      # Fallback if index doesn't carry a file path
+      $rawRel = "$packOutRel/$($item.id).json"
+    }
+
+    $rawAbs = Join-Path $OutDir $rawRel
+    $raw = if (Test-Path $rawAbs) { Load-Json $rawAbs } else { $null }
+
+    $status =
+      if ($raw -and $raw.skipped) { "Skipped" }
+      elseif ($raw -and $raw.success) { "OK" }
+      elseif ($item.status) { [string]$item.status }
+      else { "Error" }
+
+    if ($status -ne "OK" -and $packStatus -eq "OK") { $packStatus = $status }
+
+    $err =
+      if ($raw -and $raw.error) { [string]$raw.error }
+      elseif ($item.reason) { [string]$item.reason }
+      else { $null }
+
+    $deps =
+      if ($raw -and $raw.tableDependencies) { Safe-Array $raw.tableDependencies } else { @() }
+
+    # Default summary shape: first N rows (renderer-friendly)
+    $rows = if ($raw -and $raw.rows) { Safe-Array $raw.rows } else { @() }
+    $sample = @($rows | Select-Object -First 12)
+
+    $summary = [ordered]@{ sample = $sample }
+
+    # Query-specific: ingestion_top_datatypes → top list for chart/table
+    if ($raw -and $raw.success -and $item.id -eq "ingestion_top_datatypes") {
+      $top = @()
+      foreach ($r in ($rows | Select-Object -First 12)) {
+        $top += [ordered]@{
+          dataType = [string]$r.DataType
+          totalGb  = if ($r.PSObject.Properties.Name -contains "TotalGB") { [double]$r.TotalGB } else { $null }
+        }
+      }
+      $summary = [ordered]@{ top = $top }
+    }
+
+    $queries += [ordered]@{
+      id = [string]$item.id
+      title = [string]$item.title
+      status = $status
+      error = $err
+      days = if ($raw -and $raw.days) { [int]$raw.days } else { $null }
+      tableDependencies = $deps
+      summary = $summary
+      evidence = [ordered]@{ rawFile = $rawRel }
+    }
+  }
+
+  $norm.kqlPacks[$packId] = [ordered]@{
+    packTitle = $packId
+    status = $packStatus
+    queries = $queries
+  }
+}
 
   Save-Json $norm (Join-Path $OutDir "normalised.json")
 }
