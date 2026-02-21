@@ -1,1 +1,6 @@
-
+Usage
+| where TimeGenerated > ago(30d)
+| summarize TotalMB = sum(Quantity) by DataType
+| extend TotalGB = round(TotalMB/1024, 2)
+| sort by TotalGB desc
+| take 12
