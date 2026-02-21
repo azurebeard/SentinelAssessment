@@ -49,12 +49,8 @@ Usage
   $ing = Try-RunLaQuery -WorkspaceCustomerId ([Guid]$ws.CustomerId) -Query $q -Days $DaysIngestionLookback
   Save-Json $ing (Join-Path $OutDir "raw.ingestion.query.json")
 
-  # NOTE: keep going with your existing raw calls...
-}
-
-$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)  # .../src/SentinelAssessment
-$kqlCorePack = Join-Path $repoRoot "../../kql/packs/core"
-$kqlCorePack = (Resolve-Path $kqlCorePack).Path
-
 # Dynamic KQL Packs (Option A)
 Invoke-KqlPacks -WorkspaceCustomerId ([Guid]$ws.CustomerId) -RepoRoot $RepoRoot -OutDir $OutDir -DefaultsOnly -ProbeTables -ProbeDays 1
+  
+  # NOTE: keep going with your existing raw calls...
+}
