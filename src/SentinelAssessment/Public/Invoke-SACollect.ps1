@@ -4,6 +4,7 @@ function Invoke-SACollect {
     [Parameter(Mandatory=$true)][string]$SubscriptionId,
     [Parameter(Mandatory=$true)][string]$ResourceGroupName,
     [Parameter(Mandatory=$true)][string]$WorkspaceName,
+    [Parameter(Mandatory=$true)][string]$RepoRoot,
     [Parameter(Mandatory=$true)][string]$OutDir,
     [int]$DaysIngestionLookback = 30,
     [int]$DaysHealthLookback = 30
