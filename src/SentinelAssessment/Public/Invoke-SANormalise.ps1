@@ -259,13 +259,35 @@ foreach ($pd in $packDirs) {
       elseif ($item.reason) { [string]$item.reason }
       else { $null }
 
-    $deps =
-      if ($raw -and $raw.tableDependencies) { Safe-Array $raw.tableDependencies } else { @() }
+    $deps = @()
+      if (Has-Prop $raw "tableDependencies") {
+        $deps = Safe-Array $raw.tableDependencies
+    }
 
-    # Default summary shape: first N rows (renderer-friendly)
-    $rows = if ($raw -and $raw.rows) { Safe-Array $raw.rows } else { @() }
+    $rows = @()
+      if (Has-Prop $raw "rows") {
+        $rows = Safe-Array $raw.rows
+    }
+  
+    $skipped = $false
+      if (Has-Prop $raw "skipped") { $skipped = [bool]$raw.skipped }
+
+    $success = $false
+      if (Has-Prop $raw "success") { $success = [bool]$raw.success }
+
+    $err = $null
+      if (Has-Prop $raw "error") { $err = [string]$raw.error }
+
+    $days = $null
+      if (Has-Prop $raw "days") { $days = [int]$raw.days }
+
+    $status =
+      if ($skipped) { "Skipped" }
+      elseif ($success) { "OK" }
+      elseif (Has-Prop $item "status") { [string]$item.status }
+      else { "Error" }
+    
     $sample = @($rows | Select-Object -First 12)
-
     $summary = [ordered]@{ sample = $sample }
 
     # Query-specific: ingestion_top_datatypes → top list for chart/table
