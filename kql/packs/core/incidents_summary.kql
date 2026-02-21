@@ -1,1 +1,11 @@
-
+SecurityIncident
+| where TimeGenerated > ago(30d)
+| summarize
+    Incidents=count(),
+    High=countif(Severity == "High"),
+    Medium=countif(Severity == "Medium"),
+    Low=countif(Severity == "Low"),
+    Closed=countif(Status == "Closed"),
+    Active=countif(Status in ("Active","New"))
+  by bin(TimeGenerated, 1d)
+| sort by TimeGenerated asc
