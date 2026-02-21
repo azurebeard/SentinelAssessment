@@ -9,6 +9,15 @@ function Invoke-SANormalise {
   $ErrorActionPreference = "Stop"
 
   # -------- helpers (local to normalization) --------
+  function Has-Prop($obj, [string]$name) {
+    return ($null -ne $obj) -and ($obj.PSObject.Properties.Name -contains $name)
+  }
+
+  function Safe-Array($x) {
+    if ($null -eq $x) { return @() }
+      return @($x)
+  }
+  
   function New-StatusBlock([string]$status, [string]$error = $null) {
     [ordered]@{ status = $status; error = $error }
   }
