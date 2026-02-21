@@ -6,6 +6,7 @@ function Invoke-SARun {
     [Parameter(Mandatory=$true)][string]$WorkspaceName,
     [Parameter(Mandatory=$true)][string]$OutDir,
     [Parameter(Mandatory=$true)][string]$TemplatesDir,
+    [Parameter(Mandatory=$true)][string]$RepoRoot,
 
     [ValidateSet("All","Collect","Normalise","Render")]
     [string]$Steps = "All",
