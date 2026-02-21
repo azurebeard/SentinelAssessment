@@ -16,7 +16,7 @@ function Invoke-KqlPack {
   function Write-Info($m){ Write-Host "[INFO] $m" -ForegroundColor Cyan }
 
   function Safe-Array($x) { if ($null -eq $x) { @() } else { @($x) } }
-  function Safe-Count($x) { (Safe-Array $x).Count }
+  function Safe-Count($x) { if ($null -eq $x) { return 0 } return @($x).Count}
 
   function Get-AvailableTablesLocal {
     param([Guid]$WorkspaceCustomerId, [int]$Days)
