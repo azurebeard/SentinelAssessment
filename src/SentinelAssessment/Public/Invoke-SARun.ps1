@@ -16,7 +16,7 @@ function Invoke-SARun {
   )
 
   if ($Steps -in @("All","Collect")) {
-    Invoke-SACollect -SubscriptionId $SubscriptionId -ResourceGroupName $ResourceGroupName -WorkspaceName $WorkspaceName -OutDir $OutDir -DaysIngestionLookback $DaysIngestionLookback -DaysHealthLookback $DaysHealthLookback
+    Invoke-SACollect -SubscriptionId $SubscriptionId -ResourceGroupName $ResourceGroupName -WorkspaceName $WorkspaceName -OutDir $OutDir -RepoRoot $RepoRoot -DaysIngestionLookback $DaysIngestionLookback -DaysHealthLookback $DaysHealthLookback
   }
 
   if ($Steps -in @("All","Normalise")) {
