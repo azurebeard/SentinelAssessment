@@ -1,1 +1,5 @@
-
+Heartbeat
+| where TimeGenerated > ago(7d)
+| summarize LastSeen=max(TimeGenerated), Count=count() by Computer, Category, OSType
+| sort by LastSeen desc
+| take 50
