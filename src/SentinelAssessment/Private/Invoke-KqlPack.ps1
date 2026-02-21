@@ -22,7 +22,7 @@ function Invoke-KqlPack {
     $q = @"
 search *
 | where TimeGenerated > ago(${Days}d)
-| summarize by $table
+| summarize by `$table
 | take 5000
 "@
 
