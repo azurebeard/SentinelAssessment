@@ -50,3 +50,9 @@ Usage
 
   # NOTE: keep going with your existing raw calls...
 }
+
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)  # .../src/SentinelAssessment
+$kqlCorePack = Join-Path $repoRoot "../../kql/packs/core"
+$kqlCorePack = (Resolve-Path $kqlCorePack).Path
+
+Invoke-KqlPack -WorkspaceCustomerId ([Guid]$ws.CustomerId) -PackPath $kqlCorePack -OutDir $OutDir
