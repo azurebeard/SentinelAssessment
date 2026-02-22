@@ -27,6 +27,8 @@ if (-not (Test-Path $RepoRoot)) {
 
 function Write-Info($m){ Write-Host "[INFO] $m" -ForegroundColor Cyan }
 
+Remove-Module SentinelAssessment -Force -ErrorAction SilentlyContinue
+
 # Import module from repo
 $modulePath = Join-Path $RepoRoot "src/SentinelAssessment/SentinelAssessment.psd1"
 if (-not (Test-Path $modulePath)) { throw "Module not found: $modulePath" }
