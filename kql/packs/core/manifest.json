@@ -18,6 +18,22 @@
       "lookbackDaysDefault": 30,
       "tableDependencies": ["SecurityIncident"],
       "purpose": "SOC workload + maturity"
-    }
+    },
+    {
+      "id": "sentinel_audit",
+      "title": "Sentinel Audit",
+      "kqlFile": "sentinel_audit.kql",
+      "lookbackDaysDefault": 30,
+      "tableDependencies": ["SentinelAudit"],
+      "purpose": "SOC Audit"
+    },
+    {
+      "id": "sentinel_heartbeat",
+      "title": "Sentinel Heartbeat",
+      "kqlFile": "heartbeat.kql",
+      "lookbackDaysDefault": 30,
+      "tableDependencies": ["SentinelAudit"],
+      "purpose": "Heartbeat"
+    },    
   ]
 }
