@@ -4,7 +4,7 @@ function Invoke-SARender {
   param(
     [Parameter(Mandatory=$true)][string]$OutDir,
     [Parameter(Mandatory=$false)][string]$TemplatesDir,
-    [string]$ReportFileName = "SentinelAssessment.report.html",
+    [string]$ReportFileName = "SentinelAssessment.html",
     [int]$MaxSampleRows = 12
   )
 
