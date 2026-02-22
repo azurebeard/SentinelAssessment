@@ -14,14 +14,17 @@ function Invoke-SARender {
   # -----------------------------
   # Helpers
   # -----------------------------
-  function SafeArray($x) {
-    if ($null -eq $x) { return @() }
-    return @($x)
+  function SafeArray {
+    param([object]$InputObject)
+      if ($null -eq $InputObject) { return @() }
+    return @($InputObject)
   }
 
-  function Safe-Count($x) { 
-    if ($null -eq $x) { return 0 } 
-      return @($x).Count}
+  function SafeCount {
+    param([object]$InputObject)
+      if ($null -eq $InputObject) { return 0 }
+    return (@($InputObject)).Length
+  }
 
   function HasProp($obj, [string]$name) {
     return ($null -ne $obj) -and ($obj.PSObject.Properties.Name -contains $name)
