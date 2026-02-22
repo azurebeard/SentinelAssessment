@@ -20,8 +20,11 @@ function Invoke-SARender {
   }
 
   function SafeCount($x) {
-    if ($null -eq $x) { return 0 }
-    return @($x).Count
+    return (SafeArray $x).Count
+  }
+
+  function HasProp($obj, [string]$name) {
+    return ($null -ne $obj) -and ($obj.PSObject.Properties.Name -contains $name)
   }
 
   function HtmlEncode([string]$s) {
@@ -48,6 +51,12 @@ function Invoke-SARender {
     $s = [string]$v
     if ([string]::IsNullOrWhiteSpace($s)) { return "—" }
     return $s
+  }
+
+  function Get-Props($obj) {
+    if ($null -eq $obj) { return @() }
+    # PSObject.Properties is a collection, wrap it anyway for safety
+    return @($obj.PSObject.Properties)
   }
 
   # -----------------------------
@@ -136,15 +145,15 @@ function Invoke-SARender {
     $maxGb = 0.0
     foreach ($r in $ingTop) {
       $gb = 0.0
-      if ($r.totalGb -ne $null) { $gb = [double]$r.totalGb }
+      if (HasProp $r "totalGb" -and ($r.totalGb -ne $null)) { $gb = [double]$r.totalGb }
       if ($gb -gt $maxGb) { $maxGb = $gb }
     }
     if ($maxGb -le 0) { $maxGb = 1.0 }
 
     $html += "<div class='card'>"
     foreach ($r in $ingTop) {
-      $dt = [string]$r.dataType
-      $gb = if ($r.totalGb -ne $null) { [double]$r.totalGb } else { 0.0 }
+      $dt = if (HasProp $r "dataType") { [string]$r.dataType } else { "Unknown" }
+      $gb = if (HasProp $r "totalGb" -and ($r.totalGb -ne $null)) { [double]$r.totalGb } else { 0.0 }
       $pct = [math]::Round(($gb / $maxGb) * 100, 0)
 
       $html += "<div class='barRow'>"
@@ -161,30 +170,33 @@ function Invoke-SARender {
   }
 
   # -----------------------------
-  # KQL Packs - Option B
+  # KQL Packs (Option B)
   # -----------------------------
   $html += "<h2>KQL Assessment</h2>"
   $kqlPacks = $norm.kqlPacks
+  $packProps = Get-Props $kqlPacks
 
-  if ($kqlPacks -and $kqlPacks.PSObject.Properties -and ($kqlPacks.PSObject.Properties.Count -gt 0)) {
+  if ((SafeCount $packProps) -gt 0) {
 
-    # Executive summary cards
+    # Executive summary table
     $html += "<div class='card'>"
     $html += "<table><thead><tr><th>Pack</th><th>Status</th><th>Queries</th><th>OK</th><th>Skipped</th><th>Error</th></tr></thead><tbody>"
 
-    foreach ($prop in $kqlPacks.PSObject.Properties) {
-      $packId = $prop.Name
-      $pack   = $prop.Value
-      $queries = SafeArray $pack.queries
+    foreach ($p in $packProps) {
+      $packId = $p.Name
+      $pack   = $p.Value
+      $queries = SafeArray $(if (HasProp $pack "queries") { $pack.queries } else { @() })
 
-      $ok  = (SafeArray ($queries | Where-Object { $_.status -eq "OK" })).Count
-      $sk  = (SafeArray ($queries | Where-Object { $_.status -eq "Skipped" })).Count
-      $er  = (SafeArray ($queries | Where-Object { $_.status -eq "Error" })).Count
-      $tot = (SafeArray $queries).Count
+      $ok  = SafeCount (SafeArray ($queries | Where-Object { $_.status -eq "OK" }))
+      $sk  = SafeCount (SafeArray ($queries | Where-Object { $_.status -eq "Skipped" }))
+      $er  = SafeCount (SafeArray ($queries | Where-Object { $_.status -eq "Error" }))
+      $tot = SafeCount $queries
+
+      $packStatus = if (HasProp $pack "status") { [string]$pack.status } else { "Unknown" }
 
       $html += "<tr>"
       $html += "<td>" + (HtmlEncode $packId) + "</td>"
-      $html += "<td>" + (BadgeHtml $pack.status) + "</td>"
+      $html += "<td>" + (BadgeHtml $packStatus) + "</td>"
       $html += "<td>" + (HtmlEncode ([string]$tot)) + "</td>"
       $html += "<td>" + (HtmlEncode ([string]$ok)) + "</td>"
       $html += "<td>" + (HtmlEncode ([string]$sk)) + "</td>"
@@ -195,55 +207,66 @@ function Invoke-SARender {
     $html += "</tbody></table>"
     $html += "</div>"
 
-    # Drilldown
-    foreach ($prop in $kqlPacks.PSObject.Properties) {
-      $packId = $prop.Name
-      $pack   = $prop.Value
-      $queries = SafeArray $pack.queries
+    # Drilldown per pack
+    foreach ($p in $packProps) {
+      $packId = $p.Name
+      $pack   = $p.Value
+      $packStatus = if (HasProp $pack "status") { [string]$pack.status } else { "Unknown" }
+      $queries = SafeArray $(if (HasProp $pack "queries") { $pack.queries } else { @() })
 
-      $html += "<h3>Pack: " + (HtmlEncode $packId) + " " + (BadgeHtml $pack.status) + "</h3>"
+      $html += "<h3>Pack: " + (HtmlEncode $packId) + " " + (BadgeHtml $packStatus) + "</h3>"
 
-      # Coverage table
       $html += "<div class='card'>"
       $html += "<table><thead><tr><th>Query</th><th>Status</th><th>Reason / Notes</th></tr></thead><tbody>"
+
       foreach ($q in $queries) {
-        $reason = if ($q.error) { [string]$q.error } else { "" }
+        $qTitle = if (HasProp $q "title") { [string]$q.title } else { "Untitled" }
+        $qStatus = if (HasProp $q "status") { [string]$q.status } else { "Unknown" }
+        $reason = if (HasProp $q "error" -and $q.error) { [string]$q.error } else { "" }
+
         $html += "<tr>"
-        $html += "<td>" + (HtmlEncode (Format-Nullable $q.title)) + "</td>"
-        $html += "<td>" + (BadgeHtml ([string]$q.status)) + "</td>"
+        $html += "<td>" + (HtmlEncode $qTitle) + "</td>"
+        $html += "<td>" + (BadgeHtml $qStatus) + "</td>"
         $html += "<td>" + (HtmlEncode $reason) + "</td>"
         $html += "</tr>"
       }
+
       $html += "</tbody></table>"
       $html += "</div>"
 
-      # Evidence for OK queries (compact)
+      # Evidence blocks for OK queries
       foreach ($q in ($queries | Where-Object { $_.status -eq "OK" })) {
-        $html += "<div class='card'>"
-        $html += "<b>" + (HtmlEncode (Format-Nullable $q.title)) + "</b> " + (BadgeHtml "OK")
+        $qTitle = if (HasProp $q "title") { [string]$q.title } else { "Untitled" }
 
-        if ($q.summary -and $q.summary.top) {
-          $html += "<table><thead><tr><th>Item</th><th>Value</th></tr></thead><tbody>"
-          foreach ($r in (SafeArray $q.summary.top)) {
-            # Generic: render first two properties if known patterns not present
-            if ($r.dataType -and ($r.totalGb -ne $null)) {
-              $html += "<tr><td>" + (HtmlEncode ([string]$r.dataType)) + "</td><td>" + (HtmlEncode ([string]$r.totalGb)) + "</td></tr>"
+        $html += "<div class='card'>"
+        $html += "<b>" + (HtmlEncode $qTitle) + "</b> " + (BadgeHtml "OK")
+
+        if (HasProp $q "summary" -and $q.summary) {
+          if (HasProp $q.summary "top" -and $q.summary.top) {
+            $top = SafeArray $q.summary.top
+            $html += "<table><thead><tr><th>Item</th><th>Value</th></tr></thead><tbody>"
+            foreach ($r in $top) {
+              if (HasProp $r "dataType" -and HasProp $r "totalGb") {
+                $html += "<tr><td>" + (HtmlEncode ([string]$r.dataType)) + "</td><td>" + (HtmlEncode ([string]$r.totalGb)) + "</td></tr>"
+              } else {
+                $html += "<tr><td colspan='2'><code>" + (HtmlEncode ($r | ConvertTo-Json -Depth 6)) + "</code></td></tr>"
+              }
             }
-            else {
-              $html += "<tr><td colspan='2'><code>" + (HtmlEncode (($r | ConvertTo-Json -Depth 6))) + "</code></td></tr>"
-            }
+            $html += "</tbody></table>"
           }
-          $html += "</tbody></table>"
-        }
-        elseif ($q.summary -and $q.summary.sample) {
-          $sample = @($q.summary.sample | Select-Object -First $MaxSampleRows)
-          $html += "<pre>" + (HtmlEncode ($sample | ConvertTo-Json -Depth 8)) + "</pre>"
+          elseif (HasProp $q.summary "sample" -and $q.summary.sample) {
+            $sample = @($q.summary.sample | Select-Object -First $MaxSampleRows)
+            $html += "<pre>" + (HtmlEncode ($sample | ConvertTo-Json -Depth 8)) + "</pre>"
+          }
+          else {
+            $html += "<div class='muted'>No summarised rows available for this query.</div>"
+          }
         }
         else {
-          $html += "<div class='muted'>No summarised rows available for this query.</div>"
+          $html += "<div class='muted'>No summary present for this query.</div>"
         }
 
-        if ($q.evidence -and $q.evidence.rawFile) {
+        if (HasProp $q "evidence" -and $q.evidence -and HasProp $q.evidence "rawFile" -and $q.evidence.rawFile) {
           $html += "<div class='muted'>Evidence file: <code>" + (HtmlEncode ([string]$q.evidence.rawFile)) + "</code></div>"
         }
 
@@ -257,11 +280,11 @@ function Invoke-SARender {
   }
 
   # -----------------------------
-  # CAF / NIS2 mapping (lightweight, governance-friendly)
+  # CAF / NIS2 mapping (lightweight)
   # -----------------------------
   $html += "<h2>CAF / NIS2 Mapping (Summary)</h2>"
   $html += "<div class='card'>"
-  $html += "<div class='muted'>This is a governance-friendly translation of technical observations. It is not a compliance determination.</div>"
+  $html += "<div class='muted'>Governance-friendly translation of technical observations. Not a compliance determination.</div>"
   $html += "<ul>"
 
   if ($caps.kql.canQueryUsage) {
