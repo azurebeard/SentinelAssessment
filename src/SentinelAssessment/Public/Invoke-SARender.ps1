@@ -45,9 +45,9 @@ function Invoke-SARender {
   # -----------------------------
   # Locate normalised file
   # -----------------------------
-  $normPath = Join-Path $RunDir "normalised.json"
+  $normPath = Join-Path $OutDir "normalised.json"
   if (-not (Test-Path $normPath)) {
-    $normPath = Join-Path $RunDir "normalized.json"
+    $normPath = Join-Path $OutDir "normalized.json"
   }
   if (-not (Test-Path $normPath)) {
     throw "normalised.json missing. Run Normalise."
@@ -212,7 +212,7 @@ function Invoke-SARender {
   $html += "</div></body></html>"
 
   # Write file
-  $outPath = Join-Path $RunDir $ReportFileName
+  $outPath = Join-Path $OutDir $ReportFileName
   Set-Content -Path $outPath -Value $html -Encoding UTF8
 
   Write-Host "[INFO] Report written: $outPath" -ForegroundColor Cyan
