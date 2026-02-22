@@ -5,6 +5,7 @@ function Invoke-SARun {
     [Parameter(Mandatory=$true)][string]$ResourceGroupName,
     [Parameter(Mandatory=$true)][string]$WorkspaceName,
     [Parameter(Mandatory=$true)][string]$OutDir,
+    [Parameter(Mandatory=$true, ParameterSetName='RunDir')][string]$RunDir,
     [Parameter(Mandatory=$true)][string]$TemplatesDir,
     [Parameter(Mandatory=$true)][string]$RepoRoot,
 
