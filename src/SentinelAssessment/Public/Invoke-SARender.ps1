@@ -43,26 +43,49 @@ function Invoke-SARender {
     return (Get-Content $path -Raw | ConvertFrom-Json)
   }
 
+  function Format-Nullable([object]$v) {
+    if ($null -eq $v) { return "—" }
+    $s = [string]$v
+    if ([string]::IsNullOrWhiteSpace($s)) { return "—" }
+    return $s
+  }
+
   # -----------------------------
-  # Locate normalised file
+  # Validate OutDir + load normalised.json
   # -----------------------------
+  if (-not (Test-Path $OutDir)) { throw "OutDir not found: $OutDir" }
+
   $normPath = Join-Path $OutDir "normalised.json"
   if (-not (Test-Path $normPath)) {
     $normPath = Join-Path $OutDir "normalized.json"
   }
   if (-not (Test-Path $normPath)) {
-    throw "normalised.json missing. Run Normalise."
+    throw "normalised.json missing in $OutDir. Run Normalise."
   }
 
   $norm = Load-JsonFile $normPath
-  if (-not $norm) { throw "Failed to parse normalised.json" }
+  if (-not $norm) { throw "Failed to parse: $normPath" }
+
+  # -----------------------------
+  # Ensure styles.css is beside report (portable)
+  # -----------------------------
+  if ($TemplatesDir) {
+    $cssSrc = Join-Path $TemplatesDir "styles.css"
+    $cssDst = Join-Path $OutDir "styles.css"
+    if (Test-Path $cssSrc) {
+      Copy-Item $cssSrc $cssDst -Force
+    }
+    else {
+      Write-Warning "styles.css not found in TemplatesDir: $TemplatesDir"
+    }
+  }
 
   $meta = $norm.meta
   $ws   = $meta.workspace
   $caps = $meta.capabilities
 
   # -----------------------------
-  # Begin HTML
+  # Start HTML
   # -----------------------------
   $html = ""
   $html += "<!doctype html><html lang='en-GB'><head>"
@@ -70,152 +93,208 @@ function Invoke-SARender {
   $html += "<meta name='viewport' content='width=device-width, initial-scale=1'/>"
   $html += "<title>Microsoft Sentinel Assessment Report</title>"
   $html += "<link rel='stylesheet' href='styles.css'/>"
-  $html += "</head><body><div class='wrap'>"
+  $html += "</head><body>"
 
-  # Header
   $html += "<h1>Microsoft Sentinel Assessment Report</h1>"
-  $html += "<div class='small'>Generated (UTC): " + (HtmlEncode $meta.runGeneratedUtc) + "</div>"
+  $html += "<div class='muted'>Generated (UTC): " + (HtmlEncode (Format-Nullable $meta.runGeneratedUtc)) + "</div>"
 
   # Workspace
   $html += "<h2>Workspace</h2>"
-  $html += "<div class='grid'>"
-  $html += "<div class='card'><h4>Workspace</h4>"
-  $html += "<div><b>Name:</b> " + (HtmlEncode $ws.workspaceName) + "</div>"
-  $html += "<div><b>Resource Group:</b> " + (HtmlEncode $ws.resourceGroup) + "</div>"
-  $html += "<div><b>Location:</b> " + (HtmlEncode $ws.location) + "</div>"
-  $html += "</div>"
-  $html += "<div class='card'><h4>Retention & SKU</h4>"
-  $html += "<div><b>Retention:</b> " + (HtmlEncode $ws.retentionInDays) + " days</div>"
-  $html += "<div><b>SKU:</b> " + (HtmlEncode $ws.sku) + "</div>"
-  $html += "</div>"
+  $html += "<div class='card'>"
+  $html += "<table><tbody>"
+  $html += "<tr><th>Workspace</th><td>" + (HtmlEncode (Format-Nullable $ws.workspaceName)) + "</td></tr>"
+  $html += "<tr><th>Resource Group</th><td>" + (HtmlEncode (Format-Nullable $ws.resourceGroup)) + "</td></tr>"
+  $html += "<tr><th>Location</th><td>" + (HtmlEncode (Format-Nullable $ws.location)) + "</td></tr>"
+  $html += "<tr><th>Retention (days)</th><td>" + (HtmlEncode (Format-Nullable $ws.retentionInDays)) + "</td></tr>"
+  $html += "<tr><th>SKU</th><td>" + (HtmlEncode (Format-Nullable $ws.sku)) + "</td></tr>"
+  $html += "</tbody></table>"
   $html += "</div>"
 
   # Capabilities
   $html += "<h2>Capabilities (Least Privilege)</h2>"
-  $html += "<div class='grid'>"
-  $html += "<div class='card'><h4>KQL</h4>"
-  $html += "<div>Usage: " + (BadgeHtml ($(if($caps.kql.canQueryUsage){"OK"}else{"Error"}))) + "</div>"
-  $html += "<div>SentinelHealth: " + (BadgeHtml ($(if($caps.kql.canQuerySentinelHealth){"OK"}else{"Error"}))) + "</div>"
-  $html += "</div>"
-  $html += "<div class='card'><h4>ARM</h4>"
-  $html += "<div>Alert Rules: " + (BadgeHtml ($(if($caps.arm.canListAlertRules){"OK"}else{"Error"}))) + "</div>"
-  $html += "<div>Connectors: " + (BadgeHtml ($(if($caps.arm.canListConnectors){"OK"}else{"Error"}))) + "</div>"
-  $html += "<div>Automation Rules: " + (BadgeHtml ($(if($caps.arm.canListAutomationRules){"OK"}else{"Error"}))) + "</div>"
-  $html += "</div>"
+  $html += "<div class='card'>"
+  $html += "<table><thead><tr><th>Area</th><th>Capability</th><th>Status</th></tr></thead><tbody>"
+
+  $html += "<tr><td>KQL</td><td>Query Usage</td><td>" + (BadgeHtml ($(if($caps.kql.canQueryUsage){"OK"}else{"Error"}))) + "</td></tr>"
+  $html += "<tr><td>KQL</td><td>Query SentinelHealth</td><td>" + (BadgeHtml ($(if($caps.kql.canQuerySentinelHealth){"OK"}else{"Error"}))) + "</td></tr>"
+  $html += "<tr><td>KQL</td><td>Query SentinelAudit</td><td>" + (BadgeHtml ($(if($caps.kql.canQuerySentinelAudit){"OK"}else{"Error"}))) + "</td></tr>"
+
+  $html += "<tr><td>ARM</td><td>List Analytics Rules</td><td>" + (BadgeHtml ($(if($caps.arm.canListAlertRules){"OK"}else{"Error"}))) + "</td></tr>"
+  $html += "<tr><td>ARM</td><td>List Data Connectors</td><td>" + (BadgeHtml ($(if($caps.arm.canListConnectors){"OK"}else{"Error"}))) + "</td></tr>"
+  $html += "<tr><td>ARM</td><td>List Automation Rules</td><td>" + (BadgeHtml ($(if($caps.arm.canListAutomationRules){"OK"}else{"Error"}))) + "</td></tr>"
+  $html += "<tr><td>ARM</td><td>List Workbooks</td><td>" + (BadgeHtml ($(if($caps.arm.canListWorkbooks){"OK"}else{"Error"}))) + "</td></tr>"
+
+  $html += "<tr><td>Assets</td><td>List Logic Apps (Playbooks)</td><td>" + (BadgeHtml ($(if($caps.assets.canListLogicApps){"OK"}else{"Error"}))) + "</td></tr>"
+
+  $html += "</tbody></table>"
   $html += "</div>"
 
-  # Ingestion Graph
+  # Ingestion bar chart
   $html += "<h2>Log Ingestion (Top Data Types)</h2>"
   $ingTop = SafeArray $norm.ingestion.top
-
   if ((SafeCount $ingTop) -gt 0) {
-    $max = ($ingTop | Measure-Object -Property totalGb -Maximum).Maximum
-    if ($max -le 0) { $max = 1 }
-
-    $html += "<div class='barwrap'>"
+    $maxGb = 0.0
     foreach ($r in $ingTop) {
-      $pct = [math]::Round(($r.totalGb / $max) * 100,0)
-      $html += "<div class='barrow'>"
-      $html += "<div>" + (HtmlEncode $r.dataType) + "</div>"
-      $html += "<div class='bar'><span style='width:$pct%'></span></div>"
-      $html += "<div class='small'>" + (HtmlEncode $r.totalGb) + " GB</div>"
+      $gb = 0.0
+      if ($r.totalGb -ne $null) { $gb = [double]$r.totalGb }
+      if ($gb -gt $maxGb) { $maxGb = $gb }
+    }
+    if ($maxGb -le 0) { $maxGb = 1.0 }
+
+    $html += "<div class='card'>"
+    foreach ($r in $ingTop) {
+      $dt = [string]$r.dataType
+      $gb = if ($r.totalGb -ne $null) { [double]$r.totalGb } else { 0.0 }
+      $pct = [math]::Round(($gb / $maxGb) * 100, 0)
+
+      $html += "<div class='barRow'>"
+      $html += "<div class='barLabel'>" + (HtmlEncode $dt) + "</div>"
+      $html += "<div class='barTrack'><div class='barFill' style='width:" + $pct + "%'></div></div>"
+      $html += "<div class='barValue'>" + (HtmlEncode ([string]$gb)) + " GB</div>"
       $html += "</div>"
     }
+    $html += "<div class='muted'>Relative bars scaled to the largest value in this list.</div>"
     $html += "</div>"
   }
   else {
-    $html += "<p class='small'>No ingestion data available.</p>"
+    $html += "<div class='warn'>No ingestion summary available in normalised.json.</div>"
   }
 
   # -----------------------------
-  # KQL Executive Summary + Drilldown
+  # KQL Packs - Option B
   # -----------------------------
   $html += "<h2>KQL Assessment</h2>"
+  $kqlPacks = $norm.kqlPacks
 
-  if ($norm.kqlPacks -and $norm.kqlPacks.PSObject.Properties.Count -gt 0) {
+  if ($kqlPacks -and $kqlPacks.PSObject.Properties -and ($kqlPacks.PSObject.Properties.Count -gt 0)) {
 
-    $html += "<div class='grid'>"
+    # Executive summary cards
+    $html += "<div class='card'>"
+    $html += "<table><thead><tr><th>Pack</th><th>Status</th><th>Queries</th><th>OK</th><th>Skipped</th><th>Error</th></tr></thead><tbody>"
 
-    foreach ($prop in $norm.kqlPacks.PSObject.Properties) {
-      $pack = $prop.Value
+    foreach ($prop in $kqlPacks.PSObject.Properties) {
+      $packId = $prop.Name
+      $pack   = $prop.Value
       $queries = SafeArray $pack.queries
 
-      $ok  = (SafeArray ($queries | Where-Object {$_.status -eq "OK"})).Count
-      $sk  = (SafeArray ($queries | Where-Object {$_.status -eq "Skipped"})).Count
-      $er  = (SafeArray ($queries | Where-Object {$_.status -eq "Error"})).Count
+      $ok  = (SafeArray ($queries | Where-Object { $_.status -eq "OK" })).Count
+      $sk  = (SafeArray ($queries | Where-Object { $_.status -eq "Skipped" })).Count
+      $er  = (SafeArray ($queries | Where-Object { $_.status -eq "Error" })).Count
+      $tot = (SafeArray $queries).Count
 
-      $html += "<div class='card'>"
-      $html += "<h4>Pack: " + (HtmlEncode $prop.Name) + "</h4>"
-      $html += "<div>Status: " + (BadgeHtml $pack.status) + "</div>"
-      $html += "<div class='small'>OK: $ok | Skipped: $sk | Error: $er</div>"
-      $html += "</div>"
+      $html += "<tr>"
+      $html += "<td>" + (HtmlEncode $packId) + "</td>"
+      $html += "<td>" + (BadgeHtml $pack.status) + "</td>"
+      $html += "<td>" + (HtmlEncode ([string]$tot)) + "</td>"
+      $html += "<td>" + (HtmlEncode ([string]$ok)) + "</td>"
+      $html += "<td>" + (HtmlEncode ([string]$sk)) + "</td>"
+      $html += "<td>" + (HtmlEncode ([string]$er)) + "</td>"
+      $html += "</tr>"
     }
 
+    $html += "</tbody></table>"
     $html += "</div>"
 
-    $html += "<h3>Drilldown</h3>"
-
-    foreach ($prop in $norm.kqlPacks.PSObject.Properties) {
-      $pack = $prop.Value
+    # Drilldown
+    foreach ($prop in $kqlPacks.PSObject.Properties) {
+      $packId = $prop.Name
+      $pack   = $prop.Value
       $queries = SafeArray $pack.queries
 
-      $html += "<details>"
-      $html += "<summary>Pack: " + (HtmlEncode $prop.Name) + "</summary>"
+      $html += "<h3>Pack: " + (HtmlEncode $packId) + " " + (BadgeHtml $pack.status) + "</h3>"
 
-      $html += "<table><thead><tr><th>Query</th><th>Status</th><th>Reason</th></tr></thead><tbody>"
+      # Coverage table
+      $html += "<div class='card'>"
+      $html += "<table><thead><tr><th>Query</th><th>Status</th><th>Reason / Notes</th></tr></thead><tbody>"
       foreach ($q in $queries) {
-        $reason = if ($q.error) { $q.error } else { "" }
+        $reason = if ($q.error) { [string]$q.error } else { "" }
         $html += "<tr>"
-        $html += "<td>" + (HtmlEncode $q.title) + "</td>"
-        $html += "<td>" + (BadgeHtml $q.status) + "</td>"
+        $html += "<td>" + (HtmlEncode (Format-Nullable $q.title)) + "</td>"
+        $html += "<td>" + (BadgeHtml ([string]$q.status)) + "</td>"
         $html += "<td>" + (HtmlEncode $reason) + "</td>"
         $html += "</tr>"
       }
       $html += "</tbody></table>"
+      $html += "</div>"
 
-      foreach ($q in $queries) {
-        $html += "<details>"
-        $html += "<summary>" + (HtmlEncode $q.title) + "</summary>"
+      # Evidence for OK queries (compact)
+      foreach ($q in ($queries | Where-Object { $_.status -eq "OK" })) {
+        $html += "<div class='card'>"
+        $html += "<b>" + (HtmlEncode (Format-Nullable $q.title)) + "</b> " + (BadgeHtml "OK")
 
         if ($q.summary -and $q.summary.top) {
           $html += "<table><thead><tr><th>Item</th><th>Value</th></tr></thead><tbody>"
           foreach ($r in (SafeArray $q.summary.top)) {
-            $html += "<tr><td>" + (HtmlEncode $r.dataType) + "</td><td>" + (HtmlEncode $r.totalGb) + "</td></tr>"
+            # Generic: render first two properties if known patterns not present
+            if ($r.dataType -and ($r.totalGb -ne $null)) {
+              $html += "<tr><td>" + (HtmlEncode ([string]$r.dataType)) + "</td><td>" + (HtmlEncode ([string]$r.totalGb)) + "</td></tr>"
+            }
+            else {
+              $html += "<tr><td colspan='2'><code>" + (HtmlEncode (($r | ConvertTo-Json -Depth 6))) + "</code></td></tr>"
+            }
           }
           $html += "</tbody></table>"
         }
         elseif ($q.summary -and $q.summary.sample) {
           $sample = @($q.summary.sample | Select-Object -First $MaxSampleRows)
-          $html += "<pre>" + (HtmlEncode ($sample | ConvertTo-Json -Depth 6)) + "</pre>"
+          $html += "<pre>" + (HtmlEncode ($sample | ConvertTo-Json -Depth 8)) + "</pre>"
+        }
+        else {
+          $html += "<div class='muted'>No summarised rows available for this query.</div>"
         }
 
-        $html += "</details>"
-      }
+        if ($q.evidence -and $q.evidence.rawFile) {
+          $html += "<div class='muted'>Evidence file: <code>" + (HtmlEncode ([string]$q.evidence.rawFile)) + "</code></div>"
+        }
 
-      $html += "</details>"
+        $html += "</div>"
+      }
     }
 
   }
   else {
-    $html += "<p class='small'>No KQL packs present in normalised.json.</p>"
+    $html += "<div class='warn'>No KQL pack results were included in normalised.json.</div>"
   }
 
-  # Governance Mapping
-  $html += "<h2>CAF / NIS2 Summary</h2>"
+  # -----------------------------
+  # CAF / NIS2 mapping (lightweight, governance-friendly)
+  # -----------------------------
+  $html += "<h2>CAF / NIS2 Mapping (Summary)</h2>"
   $html += "<div class='card'>"
+  $html += "<div class='muted'>This is a governance-friendly translation of technical observations. It is not a compliance determination.</div>"
   $html += "<ul>"
-  $html += "<li><b>Monitoring:</b> Log ingestion visibility supports oversight of detection capability.</li>"
-  $html += "<li><b>Detection:</b> Analytics rules inventory should be reviewed against threat model and MITRE ATT&CK coverage.</li>"
-  $html += "<li><b>Response:</b> Automation rules and playbooks should align to incident response processes.</li>"
+
+  if ($caps.kql.canQueryUsage) {
+    $html += "<li><b>Monitoring & visibility:</b> Ingestion summarisation available (supports CAF monitoring expectations and NIS2 oversight).</li>"
+  } else {
+    $html += "<li><b>Monitoring & visibility:</b> Limited ability to query ingestion (reduces assurance over telemetry completeness).</li>"
+  }
+
+  if ($caps.arm.canListAlertRules) {
+    $html += "<li><b>Detect:</b> Analytics rules inventory accessible for coverage and tuning review (align to threat model / MITRE).</li>"
+  } else {
+    $html += "<li><b>Detect:</b> Analytics rules inventory not accessible under current permissions (gap in assurance evidence).</li>"
+  }
+
+  if ($caps.arm.canListAutomationRules -or $caps.assets.canListLogicApps) {
+    $html += "<li><b>Respond:</b> Automation/playbook inventory can be evidenced for response readiness and repeatability.</li>"
+  } else {
+    $html += "<li><b>Respond:</b> Automation/playbook evidence not available under current permissions.</li>"
+  }
+
   $html += "</ul>"
   $html += "</div>"
 
-  $html += "</div></body></html>"
+  # Footer
+  $html += "<h2>Evidence Location</h2>"
+  $html += "<div class='card'>Run output directory: <code>" + (HtmlEncode $OutDir) + "</code></div>"
 
-  # Write file
+  $html += "</body></html>"
+
+  # Write report
   $outPath = Join-Path $OutDir $ReportFileName
   Set-Content -Path $outPath -Value $html -Encoding UTF8
 
-  Write-Host "[INFO] Report written: $outPath" -ForegroundColor Cyan
+  Write-Host ("[INFO] Report written: {0}" -f $outPath) -ForegroundColor Cyan
   return $outPath
 }
