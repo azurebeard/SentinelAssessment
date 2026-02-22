@@ -3,6 +3,7 @@ function Invoke-SARender {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory=$true)][string]$OutDir,
+    [Parameter(Mandatory=$false)][string]$TemplatesDir,
     [string]$ReportFileName = "SentinelAssessment.report.html",
     [int]$MaxSampleRows = 12
   )
