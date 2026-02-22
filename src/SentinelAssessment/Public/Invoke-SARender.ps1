@@ -19,9 +19,9 @@ function Invoke-SARender {
     return @($x)
   }
 
-  function SafeCount($x) {
-    return (SafeArray $x).Count
-  }
+  function Safe-Count($x) { 
+    if ($null -eq $x) { return 0 } 
+      return @($x).Count}
 
   function HasProp($obj, [string]$name) {
     return ($null -ne $obj) -and ($obj.PSObject.Properties.Name -contains $name)
