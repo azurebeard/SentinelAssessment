@@ -37,16 +37,19 @@ $templatesDir = Join-Path $RepoRoot "templates"
 if (-not (Test-Path $templatesDir)) { throw "Templates dir not found: $templatesDir" }
 
 Write-Info "Running pipeline..."
-Invoke-SARun `
-  -SubscriptionId $SubscriptionId `
-  -ResourceGroupName $ResourceGroupName `
-  -WorkspaceName $WorkspaceName `
-  -Steps $Steps `
-  -OutDir $OutDir `
-  -TemplatesDir $templatesDir `
-  -RepoRoot $RepoRoot `
-  -DaysIngestionLookback $DaysIngestionLookback `
-  -DaysHealthLookback $DaysHealthLookback
+$runParams = @{
+  SubscriptionId        = $SubscriptionId
+  ResourceGroupName     = $ResourceGroupName
+  WorkspaceName         = $WorkspaceName
+  Steps                 = $Steps
+  OutDir                = $OutDir
+  TemplatesDir          = $templatesDir
+  RepoRoot              = $RepoRoot
+  DaysIngestionLookback = $DaysIngestionLookback
+  DaysHealthLookback    = $DaysHealthLookback
+}
+
+Invoke-SARun @runParams
 
 # Zip output for download
 $zip = Join-Path $WorkDir ("SentinelAssessment-{0}.zip" -f (Split-Path $OutDir -Leaf))
