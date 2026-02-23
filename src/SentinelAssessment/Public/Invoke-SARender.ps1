@@ -1,29 +1,9 @@
 function Invoke-SARender {
-  <#
-    .SYNOPSIS
-      Render the Sentinel Assessment HTML report from normalised.json into OutDir.
-
-    .PARAMETER OutDir
-      Run output directory containing normalised.json (preferred) or normalized.json.
-
-    .PARAMETER TemplatesDir
-      Directory containing report assets (e.g. styles.css). If provided, styles.css is copied into OutDir for a portable report.
-
-    .PARAMETER ReportFileName
-      Name of the HTML report written into OutDir.
-
-    .PARAMETER MaxSampleRows
-      Max number of sample rows shown for query evidence where applicable.
-
-    .OUTPUTS
-      Full path to the generated HTML report.
-  #>
-
   [CmdletBinding()]
   param(
     [Parameter(Mandatory=$true)][string]$OutDir,
     [Parameter(Mandatory=$false)][string]$TemplatesDir,
-    [string]$ReportFileName = "SentinelAssessment.report.html",
+    [string]$ReportFileName = "SentinelAssessment.html",
     [int]$MaxSampleRows = 12
   )
 
